@@ -1,6 +1,9 @@
-# ChickClick - The Funny Battery Health Monitor App
+# 🐥 **ChickClick - The Funny Battery Health Monitor App**
 
-![ChickClick Logo](https://yourlogo.com)  
+
+<p align="center">
+  <img src="./assets/images/logo.png" alt="ChickClick Logo" />
+</p>
 *A fun and educational way to monitor your phone's temperature!*
 
 ## 📱 About ChickClick
