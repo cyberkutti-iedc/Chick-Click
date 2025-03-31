@@ -1,0 +1,1097 @@
+// import React, { useEffect, useState, useCallback } from 'react';
+// import {
+//   Text,
+//   View,
+//   StyleSheet,
+//   Dimensions,
+//   ActivityIndicator,
+//   TouchableOpacity,
+//   SectionList,
+//   RefreshControl,
+//   Alert,
+// } from 'react-native';
+// import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// import { LinearGradient } from 'expo-linear-gradient';
+// import { LineChart } from 'react-native-chart-kit';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
+// import { MaterialCommunityIcons } from '@expo/vector-icons';
+// import { useFocusEffect } from 'expo-router';
+
+// // Get dynamic screen dimensions
+// const screenWidth = Dimensions.get('window').width;
+// const screenHeight = Dimensions.get('window').height;
+
+// interface HistoryItem {
+//   timestamp: string;
+//   temperature: number;
+//   eggState: 'chicken' | 'omelet' | 'egg';
+// }
+
+// interface ChartData {
+//   labels: string[];
+//   datasets: {
+//     data: number[];
+//     color: (opacity?: number) => string;
+//     strokeWidth: number;
+//   }[];
+//   legend: string[];
+// }
+
+// interface SectionData {
+//   title: string;
+//   data: any[];
+// }
+
+// export default function History() {
+//   const insets = useSafeAreaInsets();
+//   const [historyData, setHistoryData] = useState<HistoryItem[]>([]);
+//   const [chartData, setChartData] = useState<ChartData | null>(null);
+//   const [loading, setLoading] = useState(true);
+//   const [refreshing, setRefreshing] = useState(false);
+//   const [timeRange, setTimeRange] = useState('day'); // 'day', 'week', 'month'
+//   const [selectedDetailIndex, setSelectedDetailIndex] = useState<number | null>(null);
+//   const [thresholds, setThresholds] = useState({
+//     eggCoolingTemp: 9,
+//     eggHatchingTemp: 30,
+//     omeletTemp: 38
+//   });
+//   const [statsData, setStatsData] = useState({
+//     avgTemp: 0,
+//     maxTemp: 0,
+//     minTemp: 0,
+//     eggCount: 0,
+//     chickenCount: 0,
+//     omeletCount: 0
+//   });
+//   const [sections, setSections] = useState<SectionData[]>([]);
+  
+//   // Load custom thresholds from settings
+//   useEffect(() => {
+//     const loadThresholds = async () => {
+//       try {
+//         const savedCoolingTemp = await AsyncStorage.getItem('eggCoolingTemp');
+//         if (savedCoolingTemp) setThresholds(prev => ({ ...prev, eggCoolingTemp: parseFloat(savedCoolingTemp) }));
+        
+//         const savedHatchingTemp = await AsyncStorage.getItem('eggHatchingTemp');
+//         if (savedHatchingTemp) setThresholds(prev => ({ ...prev, eggHatchingTemp: parseFloat(savedHatchingTemp) }));
+        
+//         const savedOmeletTemp = await AsyncStorage.getItem('omeletTemp');
+//         if (savedOmeletTemp) setThresholds(prev => ({ ...prev, omeletTemp: parseFloat(savedOmeletTemp) }));
+//       } catch (error) {
+//         console.error('Failed to load thresholds:', error);
+//       }
+//     };
+    
+//     loadThresholds();
+//   }, []);
+  
+//   // Reload data when screen comes into focus
+//   useFocusEffect(
+//     useCallback(() => {
+//       loadTemperatureHistory();
+//       return () => {};
+//     }, [timeRange])
+//   );
+
+//   // Prepare list sections
+//   useEffect(() => {
+//     if (loading) return;
+
+//     // Create sections with header items and actual list data
+//     const newSections: SectionData[] = [
+//       // Chart and Stats Section
+//       {
+//         title: 'chart',
+//         data: [{ type: 'chart' }]
+//       },
+//       // History Section
+//       {
+//         title: 'history',
+//         data: historyData.length > 0 
+//           ? historyData.slice().reverse().slice(0, 10) 
+//           : [{ type: 'noHistory' }]
+//       }
+//     ];
+    
+//     setSections(newSections);
+//   }, [historyData, loading, chartData, statsData]);
+  
+//   const loadTemperatureHistory = async () => {
+//     setLoading(true);
+//     try {
+//       const historyJson = await AsyncStorage.getItem('temperatureHistory');
+//       if (historyJson) {
+//         const records = JSON.parse(historyJson);
+//         setHistoryData(records);
+        
+//         // Prepare chart data based on selected time range
+//         prepareChartData(records);
+        
+//         // Calculate statistics
+//         calculateStats(records);
+//       } else {
+//         // No data yet
+//         setHistoryData([]);
+//         setChartData(null);
+//         setStatsData({
+//           avgTemp: 0,
+//           maxTemp: 0,
+//           minTemp: 0,
+//           eggCount: 0,
+//           chickenCount: 0,
+//           omeletCount: 0
+//         });
+//       }
+//     } catch (error) {
+//       console.error('Failed to load temperature history:', error);
+//     } finally {
+//       setLoading(false);
+//       setRefreshing(false);
+//     }
+//   };
+
+//   const prepareChartData = (records: HistoryItem[]) => {
+//     if (!records || records.length === 0) {
+//       setChartData(null);
+//       return;
+//     }
+    
+//     // Filter records based on selected time range
+//     const now = new Date();
+//     let filteredRecords: any[] = [];
+    
+//     switch (timeRange) {
+//       case 'day':
+//         // Last 24 hours
+//         filteredRecords = records.filter((record) => {
+//           const recordDate = new Date(record.timestamp);
+//           return (now.getTime() - recordDate.getTime()) <= 24 * 60 * 60 * 1000;
+//         });
+//         break;
+//       case 'week':
+//         // Last 7 days
+//         filteredRecords = records.filter((record) => {
+//           const recordDate = new Date(record.timestamp);
+//           return (now.getTime() - recordDate.getTime()) <= 7 * 24 * 60 * 60 * 1000;
+//         });
+//         break;
+//       case 'month':
+//         // Last 30 days
+//         filteredRecords = records.filter((record) => {
+//           const recordDate = new Date(record.timestamp);
+//           return (now.getTime() - recordDate.getTime()) <= 30 * 24 * 60 * 60 * 1000;
+//         });
+//         break;
+//     }
+    
+//     // If we have too many points, sample them to avoid chart clutter
+//     let sampledRecords = filteredRecords;
+//     if (filteredRecords.length > 20) {
+//       const sampleRate = Math.ceil(filteredRecords.length / 20);
+//       sampledRecords = filteredRecords.filter((_, index) => index % sampleRate === 0);
+//     }
+    
+//     // Ensure we have at least two points for the chart
+//     if (sampledRecords.length < 2 && filteredRecords.length >= 2) {
+//       sampledRecords = filteredRecords.slice(-2);
+//     }
+    
+//     // Format data for the chart
+//     const labels = sampledRecords.map((record) => {
+//       const date = new Date(record.timestamp);
+//       return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+//     });
+    
+//     const temperatures = sampledRecords.map((record) => record.temperature);
+    
+//     // Add threshold reference lines (as data arrays with mostly nulls except at the edges)
+//     const coolingThresholdData = Array(temperatures.length).fill(null);
+//     const hatchingThresholdData = Array(temperatures.length).fill(null);
+//     const omeletThresholdData = Array(temperatures.length).fill(null);
+    
+//     if (temperatures.length > 0) {
+//       // Only set the first and last points to create a full-width line
+//       coolingThresholdData[0] = thresholds.eggCoolingTemp;
+//       coolingThresholdData[coolingThresholdData.length - 1] = thresholds.eggCoolingTemp;
+      
+//       hatchingThresholdData[0] = thresholds.eggHatchingTemp;
+//       hatchingThresholdData[hatchingThresholdData.length - 1] = thresholds.eggHatchingTemp;
+      
+//       omeletThresholdData[0] = thresholds.omeletTemp;
+//       omeletThresholdData[omeletThresholdData.length - 1] = thresholds.omeletTemp;
+//     }
+    
+//     setChartData({
+//       labels,
+//       datasets: [
+//         {
+//           data: temperatures,
+//           color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+//           strokeWidth: 3
+//         },
+//         {
+//           data: coolingThresholdData,
+//           color: (opacity = 1) => `rgba(135, 206, 250, ${opacity * 0.8})`,
+//           strokeWidth: 2
+//         },
+//         {
+//           data: hatchingThresholdData,
+//           color: (opacity = 1) => `rgba(255, 165, 0, ${opacity * 0.8})`,
+//           strokeWidth: 2
+//         },
+//         {
+//           data: omeletThresholdData,
+//           color: (opacity = 1) => `rgba(255, 69, 0, ${opacity * 0.8})`,
+//           strokeWidth: 2
+//         }
+//       ],
+//       legend: ['Temperature (°C)']
+//     });
+//   };
+
+//   const calculateStats = (records: HistoryItem[]) => {
+//     if (!records || records.length === 0) {
+//       return;
+//     }
+    
+//     // Filter records based on selected time range
+//     const now = new Date();
+//     let filteredRecords: HistoryItem[] = [];
+    
+//     switch (timeRange) {
+//       case 'day':
+//         filteredRecords = records.filter((record) => {
+//           const recordDate = new Date(record.timestamp);
+//           return (now.getTime() - recordDate.getTime()) <= 24 * 60 * 60 * 1000;
+//         });
+//         break;
+//       case 'week':
+//         filteredRecords = records.filter((record) => {
+//           const recordDate = new Date(record.timestamp);
+//           return (now.getTime() - recordDate.getTime()) <= 7 * 24 * 60 * 60 * 1000;
+//         });
+//         break;
+//       case 'month':
+//         filteredRecords = records.filter((record) => {
+//           const recordDate = new Date(record.timestamp);
+//           return (now.getTime() - recordDate.getTime()) <= 30 * 24 * 60 * 60 * 1000;
+//         });
+//         break;
+//     }
+    
+//     // Calculate statistics
+//     if (filteredRecords.length > 0) {
+//       const temperatures = filteredRecords.map(record => record.temperature);
+//       const avgTemp = temperatures.reduce((a, b) => a + b, 0) / temperatures.length;
+//       const maxTemp = Math.max(...temperatures);
+//       const minTemp = Math.min(...temperatures);
+      
+//       const eggCount = filteredRecords.filter(record => record.eggState === 'egg').length;
+//       const chickenCount = filteredRecords.filter(record => record.eggState === 'chicken').length;
+//       const omeletCount = filteredRecords.filter(record => record.eggState === 'omelet').length;
+      
+//       setStatsData({
+//         avgTemp,
+//         maxTemp,
+//         minTemp,
+//         eggCount,
+//         chickenCount,
+//         omeletCount
+//       });
+//     }
+//   };
+
+//   const clearHistory = async () => {
+//     Alert.alert(
+//       'Clear Temperature History',
+//       'Are you sure you want to delete all temperature records? This action cannot be undone.',
+//       [
+//         {
+//           text: 'Cancel',
+//           style: 'cancel'
+//         },
+//         {
+//           text: 'Clear',
+//           style: 'destructive',
+//           onPress: async () => {
+//             try {
+//               await AsyncStorage.removeItem('temperatureHistory');
+//               setHistoryData([]);
+//               setChartData(null);
+//               setStatsData({
+//                 avgTemp: 0,
+//                 maxTemp: 0,
+//                 minTemp: 0,
+//                 eggCount: 0,
+//                 chickenCount: 0,
+//                 omeletCount: 0
+//               });
+//               Alert.alert('Success', 'Temperature history cleared successfully.');
+//             } catch (error) {
+//               console.error('Failed to clear history:', error);
+//               Alert.alert('Error', 'Failed to clear temperature history.');
+//             }
+//           }
+//         }
+//       ]
+//     );
+//   };
+
+//   const formatTimestamp = (timestamp: string | number | Date) => {
+//     const date = new Date(timestamp);
+//     return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+//   };
+
+//   const getEggStateIcon = (state: string) => {
+//     switch (state) {
+//       case 'chicken':
+//         return <MaterialCommunityIcons name="food-drumstick" size={24} color="#fff" />;
+//       case 'omelet':
+//         return <MaterialCommunityIcons name="food" size={24} color="#fff" />;
+//       default:
+//         return <MaterialCommunityIcons name="egg" size={24} color="#fff" />;
+//     }
+//   };
+  
+//   const getTimeRangeLabel = () => {
+//     switch (timeRange) {
+//       case 'day': return 'Last 24 Hours';
+//       case 'week': return 'Last 7 Days';
+//       case 'month': return 'Last 30 Days';
+//     }
+//   };
+  
+//   const getTemperatureColor = (temp: number) => {
+//     if (temp < thresholds.eggCoolingTemp) {
+//       return '#87CEFA'; // Cold blue
+//     } else if (temp < thresholds.eggHatchingTemp) {
+//       return '#90EE90'; // Ideal green
+//     } else if (temp < thresholds.omeletTemp) {
+//       return '#FFA07A'; // Hatching orange
+//     } else {
+//       return '#FF6347'; // Danger red
+//     }
+//   };
+  
+//   const onRefresh = () => {
+//     setRefreshing(true);
+//     loadTemperatureHistory();
+//   };
+  
+//   const showDetailedView = (index: number) => {
+//     setSelectedDetailIndex(index);
+//   };
+  
+//   const closeDetailedView = () => {
+//     setSelectedDetailIndex(null);
+//   };
+
+//   // Render chart and stats section
+//   const renderChartSection = () => {
+//     return (
+//       <>
+//         {/* Time Range Selector with improved UI */}
+//         <View style={styles.timeRangeContainer}>
+//           <TouchableOpacity 
+//             style={[styles.timeRangeButton, timeRange === 'day' && styles.timeRangeButtonActive]}
+//             onPress={() => setTimeRange('day')}
+//           >
+//             <MaterialCommunityIcons 
+//               name="clock-time-four" 
+//               size={18} 
+//               color="#fff" 
+//               style={styles.timeRangeIcon} 
+//             />
+//             <Text style={[styles.timeRangeText, timeRange === 'day' && styles.timeRangeTextActive]}>
+//               Day
+//             </Text>
+//           </TouchableOpacity>
+          
+//           <TouchableOpacity 
+//             style={[styles.timeRangeButton, timeRange === 'week' && styles.timeRangeButtonActive]}
+//             onPress={() => setTimeRange('week')}
+//           >
+//             <MaterialCommunityIcons 
+//               name="calendar-week" 
+//               size={18} 
+//               color="#fff" 
+//               style={styles.timeRangeIcon} 
+//             />
+//             <Text style={[styles.timeRangeText, timeRange === 'week' && styles.timeRangeTextActive]}>
+//               Week
+//             </Text>
+//           </TouchableOpacity>
+          
+//           <TouchableOpacity 
+//             style={[styles.timeRangeButton, timeRange === 'month' && styles.timeRangeButtonActive]}
+//             onPress={() => setTimeRange('month')}
+//           >
+//             <MaterialCommunityIcons 
+//               name="calendar-month" 
+//               size={18} 
+//               color="#fff" 
+//               style={styles.timeRangeIcon} 
+//             />
+//             <Text style={[styles.timeRangeText, timeRange === 'month' && styles.timeRangeTextActive]}>
+//               Month
+//             </Text>
+//           </TouchableOpacity>
+//         </View>
+        
+//         {/* Statistics Cards */}
+//         {!loading && historyData.length > 0 && (
+//           <View style={styles.statsContainer}>
+//             <View style={styles.statsRow}>
+//               <View style={styles.statCard}>
+//                 <MaterialCommunityIcons name="thermometer" size={22} color="#fff" />
+//                 <Text style={styles.statLabel}>Average</Text>
+//                 <Text style={styles.statValue}>{statsData.avgTemp.toFixed(1)}°C</Text>
+//               </View>
+              
+//               <View style={styles.statCard}>
+//                 <MaterialCommunityIcons name="thermometer-plus" size={22} color="#fff" />
+//                 <Text style={styles.statLabel}>Max</Text>
+//                 <Text style={styles.statValue}>{statsData.maxTemp.toFixed(1)}°C</Text>
+//               </View>
+              
+//               <View style={styles.statCard}>
+//                 <MaterialCommunityIcons name="thermometer-minus" size={22} color="#fff" />
+//                 <Text style={styles.statLabel}>Min</Text>
+//                 <Text style={styles.statValue}>{statsData.minTemp.toFixed(1)}°C</Text>
+//               </View>
+//             </View>
+            
+//             <View style={styles.statsRow}>
+//               <View style={styles.statCard}>
+//                 <MaterialCommunityIcons name="egg" size={22} color="#fff" />
+//                 <Text style={styles.statLabel}>Egg</Text>
+//                 <Text style={styles.statValue}>{statsData.eggCount}</Text>
+//               </View>
+              
+//               <View style={styles.statCard}>
+//                 <MaterialCommunityIcons name="food-drumstick" size={22} color="#fff" />
+//                 <Text style={styles.statLabel}>Chicken</Text>
+//                 <Text style={styles.statValue}>{statsData.chickenCount}</Text>
+//               </View>
+              
+//               <View style={styles.statCard}>
+//                 <MaterialCommunityIcons name="food" size={22} color="#fff" />
+//                 <Text style={styles.statLabel}>Omelet</Text>
+//                 <Text style={styles.statValue}>{statsData.omeletCount}</Text>
+//               </View>
+//             </View>
+//           </View>
+//         )}
+        
+//         {loading ? (
+//           <View style={styles.loadingContainer}>
+//             <ActivityIndicator size="large" color="#fff" />
+//             <Text style={styles.loadingText}>Loading temperature history...</Text>
+//           </View>
+//         ) : (
+//           <View style={styles.chartContainer}>
+//             {chartData ? (
+//               <>
+//                 <Text style={styles.chartTitle}>Temperature Trends</Text>
+//                 <LineChart
+//                   data={chartData}
+//                   width={screenWidth - 32}
+//                   height={240}
+//                   yAxisLabel=""
+//                   yAxisSuffix="°C"
+//                   chartConfig={{
+//                     backgroundColor: 'transparent',
+//                     backgroundGradientFrom: 'rgba(255, 255, 255, 0.1)',
+//                     backgroundGradientTo: 'rgba(255, 255, 255, 0.3)',
+//                     decimalPlaces: 1,
+//                     color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+//                     labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+//                     style: {
+//                       borderRadius: 16
+//                     },
+//                     propsForDots: {
+//                       r: '6',
+//                       strokeWidth: '2',
+//                       stroke: '#007bff',
+//                       strokeDasharray: '',
+//                       fill: '#ffffff'
+//                     },
+//                     propsForBackgroundLines: {
+//                       strokeDasharray: '6, 4',
+//                       strokeWidth: 1,
+//                       stroke: 'rgba(255, 255, 255, 0.5)'
+//                     },
+//                     fillShadowGradient: 'rgba(255, 255, 255, 0.6)',
+//                     fillShadowGradientOpacity: 0.3,
+//                     useShadowColorFromDataset: false
+//                   }}
+//                   bezier
+//                   style={{
+//                     ...styles.chart,
+//                     shadowColor: "#000",
+//                     shadowOffset: { width: 0, height: 4 },
+//                     shadowOpacity: 0.2,
+//                     shadowRadius: 6,
+//                     elevation: 8,
+//                   }}
+//                   fromZero={false}
+//                   withInnerLines={true}
+//                   withOuterLines={true}
+//                   withHorizontalLabels={true}
+//                   withVerticalLabels={true}
+//                   withDots={true}
+//                   segments={4}
+//                   formatYLabel={(value) => parseFloat(value).toFixed(1)}
+//                   formatXLabel={(value) => value.split(':')[0]}
+//                 />
+                
+//                 <View style={styles.thresholdLegend}>
+//                   <View style={styles.legendItem}>
+//                     <View style={[styles.legendDot, { backgroundColor: 'rgba(135, 206, 250, 0.9)' }]} />
+//                     <Text style={styles.legendText}>
+//                       Cooling ({thresholds.eggCoolingTemp}°C)
+//                     </Text>
+//                   </View>
+//                   <View style={styles.legendItem}>
+//                     <View style={[styles.legendDot, { backgroundColor: 'rgba(255, 165, 0, 0.9)' }]} />
+//                     <Text style={styles.legendText}>
+//                       Hatching ({thresholds.eggHatchingTemp}°C)
+//                     </Text>
+//                   </View>
+//                   <View style={styles.legendItem}>
+//                     <View style={[styles.legendDot, { backgroundColor: 'rgba(255, 69, 0, 0.9)' }]} />
+//                     <Text style={styles.legendText}>
+//                       Omelet ({thresholds.omeletTemp}°C)
+//                     </Text>
+//                   </View>
+//                   <View style={styles.legendItem}>
+//                     <View style={[styles.legendDot, { backgroundColor: '#ffffff' }]} />
+//                     <Text style={styles.legendText}>
+//                       Temperature (°C)
+//                     </Text>
+//                   </View>
+//                 </View>
+//               </>
+//             ) : (
+//               <View style={styles.noDataContainer}>
+//                 <MaterialCommunityIcons name="chart-line-variant" size={48} color="#fff" />
+//                 <Text style={styles.noDataText}>No temperature data available</Text>
+//                 <Text style={styles.noDataSubtext}>
+//                   Data will appear here as temperature readings are collected
+//                 </Text>
+//               </View>
+//             )}
+//           </View>
+//         )}
+//       </>
+//     );
+//   };
+
+//   // Header for history section
+//   const renderHistoryHeader = () => {
+//     return (
+//       <View style={styles.historyHeader}>
+//         <View style={styles.historyHeaderLeft}>
+//           <MaterialCommunityIcons name="history" size={20} color="#fff" />
+//           <Text style={styles.historyHeaderText}>Recent Readings</Text>
+//         </View>
+        
+//         <TouchableOpacity 
+//           style={styles.clearButton} 
+//           onPress={clearHistory}
+//           disabled={historyData.length === 0}
+//         >
+//           <MaterialCommunityIcons 
+//             name="trash-can-outline" 
+//             size={18} 
+//             color={historyData.length === 0 ? "rgba(255,255,255,0.5)" : "#fff"} 
+//           />
+//           <Text style={[
+//             styles.clearButtonText, 
+//             historyData.length === 0 && {color: "rgba(255,255,255,0.5)"}
+//           ]}>
+//             Clear
+//           </Text>
+//         </TouchableOpacity>
+//       </View>
+//     );
+//   };
+
+//   // Render item for SectionList
+//   const renderItem = ({ item, section }: { item: any, section: SectionData }) => {
+//     if (section.title === 'chart') {
+//       return renderChartSection();
+//     }
+    
+//     if (section.title === 'history') {
+//       if (item.type === 'noHistory') {
+//         return (
+//           <View style={styles.noHistoryContainer}>
+//             <MaterialCommunityIcons name="history" size={32} color="#fff" />
+//             <Text style={styles.noHistoryText}>No readings recorded yet</Text>
+//             <Text style={styles.noHistorySubtext}>
+//               Temperature readings will be saved automatically
+//             </Text>
+//           </View>
+//         );
+//       }
+      
+//       // Regular history item
+//       return (
+//         <TouchableOpacity 
+//           style={styles.historyItem}
+//           onPress={() => showDetailedView(historyData.slice().reverse().indexOf(item))}
+//         >
+//           <View style={styles.historyItemLeft}>
+//             {getEggStateIcon(item.eggState)}
+//             <Text 
+//               style={[
+//                 styles.historyItemTemp, 
+//                 {color: getTemperatureColor(item.temperature)}
+//               ]}
+//             >
+//               {item.temperature.toFixed(1)}°C
+//             </Text>
+//           </View>
+//           <View style={styles.historyItemRight}>
+//             <Text style={styles.historyItemTime}>
+//               {formatTimestamp(item.timestamp)}
+//             </Text>
+//             <MaterialCommunityIcons 
+//               name="chevron-right" 
+//               size={16} 
+//               color="rgba(255,255,255,0.6)" 
+//             />
+//           </View>
+//         </TouchableOpacity>
+//       );
+//     }
+    
+//     return null;
+//   };
+
+//   // Render section header for SectionList
+//   const renderSectionHeader = ({ section }: { section: SectionData }) => {
+//     if (section.title === 'history') {
+//       return renderHistoryHeader();
+//     }
+//     return null;
+//   };
+
+//   return (
+//     <LinearGradient 
+//       colors={['#4facfe', '#00f2fe', '#007bff']} 
+//       style={styles.container}
+//     >
+//       <View style={[styles.header, { paddingTop: insets.top || 40 }]}>
+//         <Text style={styles.headerTitle}>Temperature History</Text>
+//         <Text style={styles.headerSubtitle}>{getTimeRangeLabel()}</Text>
+//       </View>
+      
+//       <SectionList
+//         sections={sections}
+//         keyExtractor={(item, index) => index.toString()}
+//         renderItem={renderItem}
+//         renderSectionHeader={renderSectionHeader}
+//         stickySectionHeadersEnabled={false}
+//         refreshControl={
+//           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+//         }
+//         contentContainerStyle={styles.sectionListContent}
+//       />
+      
+//       {/* Detailed View Modal */}
+//       {selectedDetailIndex !== null && historyData.length > 0 && (
+//         <View style={styles.detailOverlay}>
+//           <View style={styles.detailCard}>
+//             <View style={styles.detailHeader}>
+//               <Text style={styles.detailTitle}>Reading Details</Text>
+//               <TouchableOpacity onPress={closeDetailedView}>
+//                 <MaterialCommunityIcons name="close" size={24} color="#fff" />
+//               </TouchableOpacity>
+//             </View>
+            
+//             <View style={styles.detailContent}>
+//               <View style={styles.detailRow}>
+//                 <Text style={styles.detailLabel}>Temperature:</Text>
+//                 <Text style={[
+//                   styles.detailValue, 
+//                   {color: getTemperatureColor(historyData.slice().reverse()[selectedDetailIndex].temperature)}
+//                 ]}>
+//                   {historyData.slice().reverse()[selectedDetailIndex].temperature.toFixed(1)}°C
+//                 </Text>
+//               </View>
+              
+//               <View style={styles.detailRow}>
+//                 <Text style={styles.detailLabel}>Recorded At:</Text>
+//                 <Text style={styles.detailValue}>
+//                   {formatTimestamp(historyData.slice().reverse()[selectedDetailIndex].timestamp)}
+//                 </Text>
+//               </View>
+              
+//               <View style={styles.detailRow}>
+//                 <Text style={styles.detailLabel}>Egg State:</Text>
+//                 <View style={styles.detailStateContainer}>
+//                   {getEggStateIcon(historyData.slice().reverse()[selectedDetailIndex].eggState)}
+//                   <Text style={styles.detailValue}>
+//                     {historyData.slice().reverse()[selectedDetailIndex].eggState.charAt(0).toUpperCase() + 
+//                      historyData.slice().reverse()[selectedDetailIndex].eggState.slice(1)}
+//                   </Text>
+//                 </View>
+//               </View>
+              
+//               <View style={styles.stateInfoCard}>
+//                 <MaterialCommunityIcons name="information-outline" size={20} color="#fff" />
+//                 <Text style={styles.stateInfoText}>
+//                   {historyData.slice().reverse()[selectedDetailIndex].eggState === 'egg' 
+//                     ? 'Egg is still developing. Maintain ideal temperature conditions.'
+//                     : historyData.slice().reverse()[selectedDetailIndex].eggState === 'chicken'
+//                       ? 'Egg has hatched into a chicken! Congratulations!'
+//                       : 'Egg has overheated and become an omelet. Better luck next time!'}
+//                 </Text>
+//               </View>
+//             </View>
+            
+//             <TouchableOpacity style={styles.closeDetailButton} onPress={closeDetailedView}>
+//               <Text style={styles.closeDetailButtonText}>Close</Text>
+//             </TouchableOpacity>
+//           </View>
+//         </View>
+//       )}
+//     </LinearGradient>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//   },
+//   sectionListContent: {
+//     paddingBottom: 30,
+//   },
+//   header: {
+//     padding: 16,
+//     paddingBottom: 8,
+//   },
+//   headerTitle: {
+//     fontSize: 28,
+//     fontWeight: 'bold',
+//     color: '#fff',
+//     textAlign: 'center',
+//     textShadowColor: 'rgba(0, 0, 0, 0.2)',
+//     textShadowOffset: { width: 1, height: 1 },
+//     textShadowRadius: 3,
+//   },
+//   headerSubtitle: {
+//     fontSize: 16,
+//     color: '#fff',
+//     textAlign: 'center',
+//     opacity: 0.9
+//   },
+//   timeRangeContainer: {
+//     flexDirection: 'row',
+//     justifyContent: 'center',
+//     marginVertical: 15,
+//     paddingHorizontal: 16
+//   },
+//   timeRangeButton: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     paddingVertical: 8,
+//     paddingHorizontal: 16,
+//     borderRadius: 20,
+//     marginHorizontal: 6,
+//     backgroundColor: 'rgba(255, 255, 255, 0.2)'
+//   },
+//   timeRangeButtonActive: {
+//     backgroundColor: 'rgba(255, 255, 255, 0.4)',
+//     borderWidth: 1,
+//     borderColor: 'rgba(255, 255, 255, 0.6)'
+//   },
+//   timeRangeIcon: {
+//     marginRight: 5
+//   },
+//   timeRangeText: {
+//     color: '#fff',
+//     fontWeight: '500'
+//   },
+//   timeRangeTextActive: {
+//     fontWeight: 'bold'
+//   },
+//   statsContainer: {
+//     marginHorizontal: 16,
+//     marginBottom: 15
+//   },
+//   statsRow: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     marginBottom: 10
+//   },
+//   statCard: {
+//     flex: 1,
+//     backgroundColor: 'rgba(255, 255, 255, 0.15)',
+//     borderRadius: 12,
+//     padding: 12,
+//     marginHorizontal: 5,
+//     alignItems: 'center'
+//   },
+//   statLabel: {
+//     color: '#fff',
+//     fontSize: 12,
+//     opacity: 0.9,
+//     marginTop: 4
+//   },
+//   statValue: {
+//     color: '#fff',
+//     fontSize: 16,
+//     fontWeight: 'bold',
+//     marginTop: 2
+//   },
+//   loadingContainer: {
+//     flex: 1,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//     paddingVertical: 50
+//   },
+//   loadingText: {
+//     color: '#fff',
+//     marginTop: 12,
+//     fontSize: 16
+//   },
+//   chartContainer: {
+//     padding: 16,
+//     alignItems: 'center',
+//     justifyContent: 'center',
+//     backgroundColor: 'rgba(255, 255, 255, 0.15)',
+//     borderRadius: 16,
+//     margin: 16,
+//     marginTop: 0,
+//     marginBottom: 16,
+//     elevation: 3,
+//     shadowColor: '#000',
+//     shadowOffset: { width: 0, height: 2 },
+//     shadowOpacity: 0.1,
+//     shadowRadius: 4
+//   },
+//   chartTitle: {
+//     color: '#fff',
+//     fontSize: 18,
+//     fontWeight: 'bold',
+//     marginBottom: 12,
+//     alignSelf: 'flex-start'
+//   },
+//   chart: {
+//     marginVertical: 8,
+//     borderRadius: 16
+//   },
+//   thresholdLegend: {
+//     width: '100%',
+//     marginTop: 12,
+//     paddingTop: 12,
+//     borderTopWidth: 1,
+//     borderTopColor: 'rgba(255, 255, 255, 0.2)'
+//   },
+//   legendItem: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     marginBottom: 6
+//   },
+//   legendDot: {
+//     width: 12,
+//     height: 12,
+//     borderRadius: 6,
+//     marginRight: 8
+//   },
+//   legendText: {
+//     color: '#fff',
+//     fontSize: 12
+//   },
+//   noDataContainer: {
+//     alignItems: 'center',
+//     justifyContent: 'center',
+//     padding: 30
+//   },
+//   noDataText: {
+//     color: '#fff',
+//     fontSize: 18,
+//     fontWeight: 'bold',
+//     marginTop: 16,
+//     textAlign: 'center'
+//   },
+//   noDataSubtext: {
+//     color: '#fff',
+//     fontSize: 14,
+//     opacity: 0.8,
+//     marginTop: 8,
+//     textAlign: 'center'
+//   },
+//   historyListContainer: {
+//     backgroundColor: 'rgba(255, 255, 255, 0.15)',
+//     borderRadius: 16,
+//     margin: 16,
+//     marginTop: 0,
+//     padding: 16,
+//     flex: 1
+//   },
+//   historyHeader: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     marginBottom: 16
+//   },
+//   historyHeaderLeft: {
+//     flexDirection: 'row',
+//     alignItems: 'center'
+//   },
+//   historyHeaderText: {
+//     color: '#fff',
+//     fontSize: 18,
+//     fontWeight: 'bold',
+//     marginLeft: 8
+//   },
+//   clearButton: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     backgroundColor: 'rgba(255, 255, 255, 0.2)',
+//     paddingVertical: 6,
+//     paddingHorizontal: 12,
+//     borderRadius: 20
+//   },
+//   clearButtonText: {
+//     color: '#fff',
+//     marginLeft: 4,
+//     fontSize: 12
+//   },
+//   historyList: {
+//     maxHeight: 350
+//   },
+//   historyItem: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     paddingVertical: 12,
+//     paddingHorizontal: 4,
+//     borderBottomWidth: 1,
+//     borderBottomColor: 'rgba(255, 255, 255, 0.1)'
+//   },
+//   historyItemLeft: {
+//     flexDirection: 'row',
+//     alignItems: 'center'
+//   },
+//   historyItemTemp: {
+//     color: '#fff',
+//     fontSize: 16,
+//     fontWeight: 'bold',
+//     marginLeft: 10
+//   },
+//   historyItemRight: {
+//     flexDirection: 'row',
+//     alignItems: 'center'
+//   },
+//   historyItemTime: {
+//     color: 'rgba(255, 255, 255, 0.8)',
+//     fontSize: 12,
+//     marginRight: 4
+//   },
+//   noHistoryContainer: {
+//     alignItems: 'center',
+//     justifyContent: 'center',
+//     padding: 30
+//   },
+//   noHistoryText: {
+//     color: '#fff',
+//     fontSize: 16,
+//     marginTop: 12,
+//     opacity: 0.9,
+//     fontWeight: 'bold'
+//   },
+//   noHistorySubtext: {
+//     color: '#fff',
+//     fontSize: 14,
+//     marginTop: 6,
+//     opacity: 0.7,
+//     textAlign: 'center'
+//   },
+//   detailOverlay: {
+//     position: 'absolute',
+//     top: 0,
+//     left: 0,
+//     right: 0,
+//     bottom: 0,
+//     backgroundColor: 'rgba(0,0,0,0.7)',
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//     zIndex: 1000
+//   },
+//   detailCard: {
+//     backgroundColor: 'rgba(49, 150, 255, 0.95)',
+//     borderRadius: 16,
+//     width: '85%',
+//     padding: 20,
+//     elevation: 5,
+//     shadowColor: '#000',
+//     shadowOffset: { width: 0, height: 4 },
+//     shadowOpacity: 0.3,
+//     shadowRadius: 6
+//   },
+//   detailHeader: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     marginBottom: 16
+//   },
+//   detailTitle: {
+//     color: '#fff',
+//     fontSize: 18,
+//     fontWeight: 'bold'
+//   },
+//   detailContent: {
+//     marginBottom: 20
+//   },
+//   detailRow: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     marginBottom: 14,
+//     paddingBottom: 10,
+//     borderBottomWidth: 1,
+//     borderBottomColor: 'rgba(255, 255, 255, 0.2)'
+//   },
+//   detailLabel: {
+//     color: 'rgba(255, 255, 255, 0.9)',
+//     fontSize: 14
+//   },
+//   detailValue: {
+//     color: '#fff',
+//     fontSize: 16,
+//     fontWeight: 'bold'
+//   },
+//   detailStateContainer: {
+//     flexDirection: 'row',
+//     alignItems: 'center'
+//   },
+//   stateInfoCard: {
+//     flexDirection: 'row',
+//     backgroundColor: 'rgba(0, 0, 0, 0.2)',
+//     borderRadius: 12,
+//     padding: 12,
+//     marginTop: 10
+//   },
+//   stateInfoText: {
+//     color: '#fff',
+//     fontSize: 14,
+//     marginLeft: 10,
+//     flex: 1
+//   },
+//   closeDetailButton: {
+//     backgroundColor: 'rgba(255, 255, 255, 0.3)',
+//     paddingVertical: 10,
+//     borderRadius: 10,
+//     alignItems: 'center'
+//   },
+//   closeDetailButtonText: {
+//     color: '#fff',
+//     fontSize: 16,
+//     fontWeight: 'bold'
+//   },
+// });

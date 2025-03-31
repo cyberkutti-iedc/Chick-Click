@@ -1,50 +1,72 @@
-# Welcome to your Expo app 👋
+# ChickClick - The Funny Battery Health Monitor App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+![ChickClick Logo](https://yourlogo.com)  
+*A fun and educational way to monitor your phone's temperature!*
 
-## Get started
+## 📱 About ChickClick
+ChickClick is a unique and humorous smartphone battery health monitoring app. It simulates egg incubation based on your device's temperature, offering a playful way to learn about temperature monitoring while enjoying a virtual pet experience.
 
-1. Install dependencies
+Our mission is to provide an engaging way to track phone usage and temperature through an entertaining concept!
 
-   ```bash
+## 🐣 How It Works
+The app has three fun conditions based on your phone’s temperature and usage:
+- **🥚 Egg** – Your device is cool, and the egg is safely incubating.
+- **🐔 Chicken** – If your phone’s temperature is just right, you successfully hatch a chicken!
+- **🍳 Omelet** – If your phone overheats due to excessive usage, well… say hello to an omelet! 😂
+
+## 🚀 Features
+- Monitors device temperature in a fun and interactive way.
+- Encourages mindful phone usage.
+- Hilarious animations and visuals.
+- Developed using **React Native Expo** and **TypeScript**.
+- Currently available for **Android** only.
+
+## 🎉 Origin Story
+ChickClick was initially created during a **hackathon at our campus**, called *The Useless Project*. It started as an idea by our talented juniors:
+
+- **James Aldrin D’Cunja**
+- **Muhammed Nadeer K N**
+- **Amrith Raj M M**
+
+During the hackathon, they attempted to build it using **Kotlin** but couldn't complete it. Seeing their passion and effort, I decided to help bring their vision to life with React Native. Today, I’m thrilled to say that ChickClick is fully functional, and all the credit goes to them for their brilliant and fun idea!
+
+## 🛠️ Tech Stack
+- **Framework:** React Native (Expo)
+- **Language:** TypeScript
+- **Platform:** Android
+
+## 📥 Installation
+1. Clone this repository:
+   ```sh
+   git clone https://github.com/cyberkutti-iedc/ChickClick.git
+   ```
+2. Navigate to the project folder:
+   ```sh
+   cd ChickClick
+   ```
+3. Install dependencies:
+   ```sh
    npm install
    ```
-
-2. Start the app
-
-   ```bash
-    npx expo start
+4. Start the Expo development server:
+   ```sh
+   npm start
+   ```
+5. Run on an Android device:
+   ```sh
+   npm run android
    ```
 
-In the output, you'll find options to open the app in a
+## 📌 Future Plans
+- iOS support
+- More animations and effects
+- Social sharing feature
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🤝 Credits
+Developed by **Sreeraj V Rajesh** with inspiration and contributions from **James Aldrin D’Cunja, Muhammed Nadeer K N, and Amrith Raj M M**.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 🐤 Have Fun & Enjoy ChickClick!
+Give it a try and let us know your thoughts! 🎉
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
+Made with ❤️ for fun and learning!
